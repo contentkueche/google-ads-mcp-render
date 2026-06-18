@@ -20,18 +20,42 @@ of the server.
 """
 
 import os
+
+from cryptography.fernet import Fernet
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
+from key_value.aio.stores.redis import RedisStore
+from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
+from key_value.aio.wrappers.prefix_collections import PrefixCollectionsWrapper
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
 _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
+_JWT_SIGNING_KEY = os.environ.get("JWT_SIGNING_KEY")
+_STORAGE_ENCRYPTION_KEY = os.environ.get("STORAGE_ENCRYPTION_KEY")
+_REDIS_URL = os.environ.get("REDIS_URL")
+
+
+def _build_client_storage():
+    """Create encrypted persistent OAuth storage when Redis is configured."""
+    if not (_REDIS_URL and _STORAGE_ENCRYPTION_KEY):
+        return None
+    return FernetEncryptionWrapper(
+        key_value=PrefixCollectionsWrapper(
+            key_value=RedisStore(url=_REDIS_URL),
+            prefix="google-ads-mcp-oauth",
+        ),
+        fernet=Fernet(_STORAGE_ENCRYPTION_KEY.encode()),
+    )
 
 if _CLIENT_ID and _CLIENT_SECRET:
+    storage = _build_client_storage()
     auth = GoogleProvider(
         client_id=_CLIENT_ID,
         client_secret=_CLIENT_SECRET,
         base_url=_BASE_URL,
+        jwt_signing_key=_JWT_SIGNING_KEY,
+        client_storage=storage,
         required_scopes=[
             "openid",
             "https://www.googleapis.com/auth/userinfo.email",
