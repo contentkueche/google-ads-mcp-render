@@ -15,6 +15,8 @@
 """Entry point for the MCP server."""
 
 from ads_mcp.coordinator import mcp
+from starlette.requests import Request
+from starlette.responses import JSONResponse
 
 # The following imports are necessary to register the resources with the `mcp`
 # object, even though they are not directly used in this file.
@@ -30,6 +32,27 @@ from ads_mcp.resources import (
 
 
 import os
+
+
+def _oauth_resource_metadata() -> dict[str, object]:
+    base_url = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080").rstrip("/")
+    return {
+        "resource": f"{base_url}/mcp",
+        "authorization_servers": [f"{base_url}/"],
+        "scopes_supported": [
+            "openid",
+            "https://www.googleapis.com/auth/userinfo.email",
+            "https://www.googleapis.com/auth/userinfo.profile",
+            "https://www.googleapis.com/auth/adwords",
+        ],
+        "bearer_methods_supported": ["header"],
+    }
+
+
+@mcp.custom_route("/.well-known/oauth-protected-resource", methods=["GET"])
+async def oauth_protected_resource_root(_request: Request) -> JSONResponse:
+    """Expose protected resource metadata at the RFC root path for MCP clients."""
+    return JSONResponse(_oauth_resource_metadata())
 
 
 def run_server() -> None:
