@@ -42,6 +42,12 @@ ConversionActionCategory = Literal[
     "QUALIFIED_LEAD",
 ]
 ConversionActionCountingType = Literal["ONE_PER_CLICK", "MANY_PER_CLICK"]
+ConversionGoalOrigin = Literal[
+    "WEBSITE",
+    "GOOGLE_HOSTED",
+    "CALL_FROM_ADS",
+    "YOUTUBE_HOSTED",
+]
 
 _TEMP_BUDGET_RESOURCE_NAME = "customers/{customer_id}/campaignBudgets/-1"
 _TEMP_CAMPAIGN_RESOURCE_NAME = "customers/{customer_id}/campaigns/-2"
@@ -932,6 +938,66 @@ def update_campaign_budget(
         "new_amount_micros": amount_micros,
         "explicitly_shared_budget": current["explicitly_shared"],
         "warnings": warnings,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def update_customer_conversion_goal_biddable(
+    customer_id: str,
+    category: ConversionActionCategory,
+    origin: ConversionGoalOrigin,
+    biddable: bool,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update whether an account-level conversion goal is biddable.
+
+    Defaults to validate-only mode. A real write requires dry_run=false and
+    confirm_write=true. Use carefully: account-level goals can affect bidding
+    behavior for campaigns that use the account default conversion goals.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    _require_confirmed_write(
+        dry_run,
+        confirm_write,
+        "update a customer conversion goal",
+    )
+
+    client = utils.get_googleads_client()
+    goal_service = utils.get_googleads_service(
+        "CustomerConversionGoalService"
+    )
+    operation = client.get_type("CustomerConversionGoalOperation")
+    goal = operation.update
+    goal.resource_name = (
+        f"customers/{customer_id}/customerConversionGoals/"
+        f"{category}~{origin}"
+    )
+    goal.biddable = biddable
+    operation.update_mask.paths.append("biddable")
+
+    request = client.get_type("MutateCustomerConversionGoalsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = goal_service.mutate_customer_conversion_goals(
+            request=request
+        )
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_customer_conversion_goal_biddable",
+        "customer_id": customer_id,
+        "resource_name": goal.resource_name,
+        "category": category,
+        "origin": origin,
+        "biddable": biddable,
         "resource_names": _result_resource_names(response),
     }
 
