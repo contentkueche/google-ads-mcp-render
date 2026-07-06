@@ -170,6 +170,34 @@ When these variables are set, the server automatically switches to the `streamab
 
 You will need to run the server as a separate process and configure your MCP client to connect to the SSE endpoint (e.g., `http://localhost:8080/mcp`).
 
+For direct Python FastMCP client scripts, use the bundled persistent OAuth
+helper instead of `auth="oauth"`. FastMCP's bare OAuth shortcut stores tokens
+in memory; the helper below stores OAuth tokens and dynamic client registration
+data on disk, using SHA-256-hashed filenames for URL-derived keys:
+
+```python
+import anyio
+
+from ads_mcp.fastmcp_client import create_google_ads_mcp_client
+
+
+async def main():
+    async with create_google_ads_mcp_client(
+        "https://ck-google-ads-mcp.onrender.com/mcp"
+    ) as client:
+        tools = await client.list_tools()
+        print([tool.name for tool in tools])
+
+
+anyio.run(main)
+```
+
+By default the token store is created in the user's application state
+directory, for example
+`~/Library/Application Support/google-ads-mcp/oauth` on macOS. Override it with
+`GOOGLE_ADS_MCP_CLIENT_TOKEN_STORE=/path/to/oauth-store`. If the browser
+callback needs a stable port, set `GOOGLE_ADS_MCP_CLIENT_CALLBACK_PORT=8765`.
+
 #### Option 2: Configure credentials using Application Default Credentials
 
 Configure your [Application Default Credentials
