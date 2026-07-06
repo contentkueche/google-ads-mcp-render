@@ -24,12 +24,14 @@ from typing import Iterable
 
 from cryptography.fernet import Fernet
 from fastmcp import FastMCP
+from fastmcp.server.auth.oauth_proxy.models import ProxyDCRClient
 from fastmcp.server.auth.providers.google import GoogleProvider
 from fastmcp.utilities.auth import parse_scopes
 from key_value.aio.stores.redis import RedisStore
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
 from key_value.aio.wrappers.prefix_collections import PrefixCollectionsWrapper
 from mcp.server.auth.provider import TokenError
+from pydantic import AnyUrl
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
@@ -37,6 +39,8 @@ _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
 _JWT_SIGNING_KEY = os.environ.get("JWT_SIGNING_KEY")
 _STORAGE_ENCRYPTION_KEY = os.environ.get("STORAGE_ENCRYPTION_KEY")
 _REDIS_URL = os.environ.get("REDIS_URL")
+_ALLOW_MISSING_OAUTH_CLIENTS_ENV = "GOOGLE_ADS_MCP_ALLOW_MISSING_OAUTH_CLIENTS"
+_ALLOWED_REDIRECT_URIS_ENV = "GOOGLE_ADS_MCP_ALLOWED_REDIRECT_URIS"
 _GOOGLE_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
 _REQUIRED_GOOGLE_SCOPES = [
     "openid",
@@ -50,6 +54,13 @@ _GOOGLE_SCOPE_ALIASES = {
     "profile": "https://www.googleapis.com/auth/userinfo.profile",
 }
 
+_DEFAULT_CLIENT_REDIRECT_URI_PATTERNS = [
+    "https://chatgpt.com/connector/oauth/*",
+    "https://chat.openai.com/connector/oauth/*",
+    "http://localhost:*/*",
+    "http://127.0.0.1:*/*",
+]
+
 
 def _normalize_google_scope(scope: str) -> str:
     return _GOOGLE_SCOPE_ALIASES.get(scope, scope)
@@ -60,12 +71,8 @@ def _missing_required_google_scopes(
     granted_scope_value: str | None,
     requested_scopes: Iterable[str],
 ) -> list[str]:
-    granted_scopes = parse_scopes(granted_scope_value or "") or list(
-        requested_scopes
-    )
-    normalized_granted = {
-        _normalize_google_scope(scope) for scope in granted_scopes
-    }
+    granted_scopes = parse_scopes(granted_scope_value or "") or list(requested_scopes)
+    normalized_granted = {_normalize_google_scope(scope) for scope in granted_scopes}
     return [
         scope
         for scope in required_scopes
@@ -73,8 +80,43 @@ def _missing_required_google_scopes(
     ]
 
 
+def _split_csv(value: str | None) -> list[str]:
+    return [item.strip() for item in (value or "").split(",") if item.strip()]
+
+
+def _client_redirect_uri_patterns() -> list[str]:
+    """Allowed redirect URI patterns for DCR and missing-client recovery."""
+    return (
+        _split_csv(os.environ.get(_ALLOWED_REDIRECT_URIS_ENV))
+        or _DEFAULT_CLIENT_REDIRECT_URI_PATTERNS
+    )
+
+
+def _allow_missing_oauth_clients() -> bool:
+    """Whether to synthesize lost DCR clients for constrained redirects."""
+    value = os.environ.get(_ALLOW_MISSING_OAUTH_CLIENTS_ENV, "true").lower()
+    return value not in {"0", "false", "no", "off"}
+
+
 class GoogleAdsProvider(GoogleProvider):
     """Google OAuth provider that rejects partial grants for Google Ads access."""
+
+    async def get_client(self, client_id: str):
+        client = await super().get_client(client_id)
+        if client is not None or not _allow_missing_oauth_clients():
+            return client
+
+        return ProxyDCRClient(
+            client_id=client_id,
+            client_secret=None,
+            redirect_uris=[AnyUrl("http://localhost")],
+            grant_types=["authorization_code", "refresh_token"],
+            response_types=["code"],
+            scope=" ".join(_REQUIRED_GOOGLE_SCOPES),
+            token_endpoint_auth_method="none",
+            allowed_redirect_uri_patterns=_client_redirect_uri_patterns(),
+            allow_unregistered_redirect_uris=True,
+        )
 
     async def exchange_authorization_code(self, client, authorization_code):
         code_model = await self._code_store.get(key=authorization_code.code)
@@ -93,9 +135,7 @@ class GoogleAdsProvider(GoogleProvider):
                     + ", ".join(missing_scopes),
                 )
 
-        return await super().exchange_authorization_code(
-            client, authorization_code
-        )
+        return await super().exchange_authorization_code(client, authorization_code)
 
 
 def _build_client_storage():
@@ -120,6 +160,7 @@ if _CLIENT_ID and _CLIENT_SECRET:
         jwt_signing_key=_JWT_SIGNING_KEY,
         client_storage=storage,
         required_scopes=_REQUIRED_GOOGLE_SCOPES,
+        allowed_client_redirect_uris=_client_redirect_uri_patterns(),
         extra_authorize_params={"include_granted_scopes": "true"},
     )
     mcp = FastMCP("Google Ads Server", auth=auth)

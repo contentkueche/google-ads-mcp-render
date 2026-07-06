@@ -43,9 +43,7 @@ class TestUtils(unittest.TestCase):
     def test_http_allowed_hosts_include_public_base_url(self):
         from ads_mcp import server
 
-        self.assertIn(
-            "ck-google-ads-mcp.onrender.com", server._http_allowed_hosts()
-        )
+        self.assertIn("ck-google-ads-mcp.onrender.com", server._http_allowed_hosts())
         self.assertIn(
             "https://ck-google-ads-mcp.onrender.com",
             server._http_allowed_origins(),
@@ -78,8 +76,7 @@ class TestUtils(unittest.TestCase):
         missing = coordinator._missing_required_google_scopes(
             required_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
             granted_scope_value=(
-                "email profile "
-                "https://www.googleapis.com/auth/userinfo.email openid"
+                "email profile " "https://www.googleapis.com/auth/userinfo.email openid"
             ),
             requested_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
         )
@@ -95,13 +92,33 @@ class TestUtils(unittest.TestCase):
         missing = coordinator._missing_required_google_scopes(
             required_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
             granted_scope_value=(
-                "email profile openid "
-                "https://www.googleapis.com/auth/adwords"
+                "email profile openid " "https://www.googleapis.com/auth/adwords"
             ),
             requested_scopes=[],
         )
 
         self.assertEqual(missing, [])
+
+    def test_client_redirect_uri_patterns_default_to_chatgpt_and_loopback(self):
+        with patch.dict("os.environ", {}, clear=True):
+            patterns = coordinator._client_redirect_uri_patterns()
+
+        self.assertIn("https://chatgpt.com/connector/oauth/*", patterns)
+        self.assertIn("http://localhost:*/*", patterns)
+
+    def test_client_redirect_uri_patterns_allow_env_override(self):
+        with patch.dict(
+            "os.environ",
+            {
+                coordinator._ALLOWED_REDIRECT_URIS_ENV: (
+                    "https://example.com/callback/*, http://localhost:*/*"
+                )
+            },
+        ):
+            self.assertEqual(
+                coordinator._client_redirect_uri_patterns(),
+                ["https://example.com/callback/*", "http://localhost:*/*"],
+            )
 
 
 class AsyncStore:
@@ -143,3 +160,39 @@ class TestGoogleAdsProvider(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(raised.exception.error, "invalid_scope")
         self.assertIn("auth/adwords", raised.exception.error_description)
         self.assertEqual(provider._code_store.deleted_key, "auth-code")
+
+    async def test_get_client_synthesizes_missing_chatgpt_client(self):
+        provider = object.__new__(coordinator.GoogleAdsProvider)
+        provider._client_store = AsyncStore(None)
+        provider._cimd_manager = None
+        provider._upstream_client_id = "google-upstream-client-id"
+        provider._default_scope_str = " ".join(coordinator._REQUIRED_GOOGLE_SCOPES)
+        provider._allowed_client_redirect_uris = (
+            coordinator._client_redirect_uri_patterns()
+        )
+
+        with patch.dict("os.environ", {}, clear=True):
+            client = await provider.get_client("07411532-cd6d-4ba7-b704-72fd93c3fe0c")
+
+        self.assertIsNotNone(client)
+        self.assertEqual(client.client_id, "07411532-cd6d-4ba7-b704-72fd93c3fe0c")
+        self.assertTrue(client.allow_unregistered_redirect_uris)
+        self.assertIn(
+            "https://chatgpt.com/connector/oauth/*",
+            client.allowed_redirect_uri_patterns,
+        )
+        client.validate_redirect_uri("https://chatgpt.com/connector/oauth/BeQaPEbu6YdA")
+
+    async def test_get_client_can_disable_missing_client_synthesis(self):
+        provider = object.__new__(coordinator.GoogleAdsProvider)
+        provider._client_store = AsyncStore(None)
+        provider._cimd_manager = None
+        provider._upstream_client_id = "google-upstream-client-id"
+
+        with patch.dict(
+            "os.environ",
+            {coordinator._ALLOW_MISSING_OAUTH_CLIENTS_ENV: "false"},
+        ):
+            client = await provider.get_client("missing-client")
+
+        self.assertIsNone(client)

@@ -163,6 +163,8 @@ To enable it, set the following environment variables:
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_ID`: Your Google Cloud OAuth 2.0 Client ID.
 - `GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET`: Your Google Cloud OAuth 2.0 Client Secret.
 - `GOOGLE_ADS_MCP_BASE_URL`: (Optional) The base URL where the server is accessible (defaults to `http://localhost:8080`).
+- `GOOGLE_ADS_MCP_ALLOWED_REDIRECT_URIS`: (Optional) Comma-separated redirect URI patterns for MCP OAuth clients. Defaults to ChatGPT connector callbacks and loopback client callbacks.
+- `GOOGLE_ADS_MCP_ALLOW_MISSING_OAUTH_CLIENTS`: (Optional) Set to `false` to disable recovery for clients whose Dynamic Client Registration state was lost after a deploy. Recovery still validates redirects against `GOOGLE_ADS_MCP_ALLOWED_REDIRECT_URIS`.
 
 Once this is enabled, you can authenticate to the API through your MCP client: for example, in Gemini CLI, the command `/mcp auth google-ads-mcp` triggers the authentication flow.
 

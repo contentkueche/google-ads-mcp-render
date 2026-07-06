@@ -870,6 +870,230 @@
           "tags": []
         }
       },
+      "description": "Create a guarded website conversion action for Google Ads tags.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true. The conversion action is created as type WEBPAGE so it\ncan be fired from GTM via a Google Ads conversion tag or gtag event.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "always_use_default_value": {
+            "default": false,
+            "type": "boolean"
+          },
+          "category": {
+            "default": "SUBMIT_LEAD_FORM",
+            "enum": [
+              "SUBMIT_LEAD_FORM",
+              "CONTACT",
+              "QUALIFIED_LEAD"
+            ],
+            "type": "string"
+          },
+          "click_through_lookback_window_days": {
+            "default": 90,
+            "type": "integer"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "counting_type": {
+            "default": "ONE_PER_CLICK",
+            "enum": [
+              "ONE_PER_CLICK",
+              "MANY_PER_CLICK"
+            ],
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "default_currency_code": {
+            "default": "EUR",
+            "type": "string"
+          },
+          "default_value": {
+            "default": 1.0,
+            "type": "number"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "primary_for_goal": {
+            "default": true,
+            "type": "boolean"
+          },
+          "status": {
+            "default": "ENABLED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "view_through_lookback_window_days": {
+            "default": 1,
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_webpage_conversion_action",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update an ad group's ad status.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_ad_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_ad_resource_name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_ad_group_ad_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update one or more ad group criterion statuses.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_criterion_resource_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_criterion_resource_names",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_ad_group_criteria_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update a Search ad group's status.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "status": {
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_resource_name",
+          "status"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_ad_group_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
       "description": "Update a campaign's average daily budget with budget guardrails.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true. Increases require confirm_budget_increase=true, cannot\nexceed max_increase_percent, cannot exceed max_daily_budget_amount_micros,\nand can optionally be checked against a 30.4x monthly cap.",
       "inputSchema": {
         "additionalProperties": false,
@@ -938,6 +1162,47 @@
           "tags": []
         }
       },
+      "description": "Update a campaign name.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_campaign_name",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
       "description": "Update a campaign's serving status.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true.",
       "inputSchema": {
         "additionalProperties": false,
@@ -972,6 +1237,62 @@
         "type": "object"
       },
       "name": "writes_update_campaign_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update whether an account-level conversion goal is biddable.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true. Use carefully: account-level goals can affect bidding\nbehavior for campaigns that use the account default conversion goals.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "biddable": {
+            "type": "boolean"
+          },
+          "category": {
+            "enum": [
+              "SUBMIT_LEAD_FORM",
+              "CONTACT",
+              "QUALIFIED_LEAD"
+            ],
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "origin": {
+            "enum": [
+              "WEBSITE",
+              "GOOGLE_HOSTED",
+              "CALL_FROM_ADS",
+              "YOUTUBE_HOSTED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "category",
+          "origin",
+          "biddable"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_customer_conversion_goal_biddable",
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
