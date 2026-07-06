@@ -30,6 +30,13 @@ writes_mcp = FastMCP("writes")
 CampaignStatus = Literal["ENABLED", "PAUSED"]
 EntityStatus = Literal["ENABLED", "PAUSED"]
 KeywordMatchType = Literal["BROAD", "PHRASE", "EXACT"]
+PositiveGeoTargetType = Literal[
+    "PRESENCE",
+    "PRESENCE_OR_INTEREST",
+    "SEARCH_INTEREST",
+]
+NegativeGeoTargetType = Literal["PRESENCE", "PRESENCE_OR_INTEREST"]
+ProximityRadiusUnit = Literal["KILOMETERS", "MILES"]
 EuPoliticalAdvertisingStatus = Literal[
     "CONTAINS_EU_POLITICAL_ADVERTISING",
     "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
@@ -931,6 +938,144 @@ def update_campaign_name(
         "customer_id": customer_id,
         "campaign_id": campaign_id,
         "name": name,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def replace_campaign_geo_targeting_with_proximity(
+    customer_id: str,
+    campaign_id: str,
+    remove_campaign_criterion_resource_names: List[str],
+    latitude: float,
+    longitude: float,
+    radius: float,
+    radius_units: ProximityRadiusUnit = "KILOMETERS",
+    positive_geo_target_type: PositiveGeoTargetType = "PRESENCE",
+    negative_geo_target_type: NegativeGeoTargetType = "PRESENCE",
+    city_name: str = "Munich",
+    country_code: str = "DE",
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Replace campaign location targeting with a geo-radius proximity target.
+
+    Also updates the campaign's positive/negative geo target type settings.
+    Defaults to validate-only mode. A real write requires dry_run=false and
+    confirm_write=true.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    campaign_id = _normalize_id(campaign_id, "campaign_id")
+    if not (-90 <= latitude <= 90):
+        raise ToolError("latitude must be between -90 and 90.")
+    if not (-180 <= longitude <= 180):
+        raise ToolError("longitude must be between -180 and 180.")
+    if radius <= 0 or radius > 500:
+        raise ToolError("radius must be greater than 0 and at most 500.")
+    city_name = city_name.strip()
+    country_code = country_code.strip().upper()
+    if len(country_code) != 2 or not country_code.isalpha():
+        raise ToolError("country_code must be a 2-letter country code.")
+    remove_campaign_criterion_resource_names = [
+        _validate_customer_composite_resource_name(
+            resource_name,
+            "campaign_criterion_resource_name",
+            customer_id,
+            "campaignCriteria",
+        )
+        for resource_name in remove_campaign_criterion_resource_names
+    ]
+    _require_confirmed_write(
+        dry_run,
+        confirm_write,
+        "replace campaign geo targeting with proximity targeting",
+    )
+
+    client = utils.get_googleads_client()
+    campaign_service = utils.get_googleads_service("CampaignService")
+    campaign_resource_name = campaign_service.campaign_path(
+        customer_id, campaign_id
+    )
+
+    campaign_operation = client.get_type("CampaignOperation")
+    campaign = campaign_operation.update
+    campaign.resource_name = campaign_resource_name
+    campaign.geo_target_type_setting.positive_geo_target_type = getattr(
+        client.enums.PositiveGeoTargetTypeEnum, positive_geo_target_type
+    )
+    campaign.geo_target_type_setting.negative_geo_target_type = getattr(
+        client.enums.NegativeGeoTargetTypeEnum, negative_geo_target_type
+    )
+    campaign_operation.update_mask.paths.extend(
+        [
+            "geo_target_type_setting.positive_geo_target_type",
+            "geo_target_type_setting.negative_geo_target_type",
+        ]
+    )
+
+    operations = [
+        _wrap_mutate_operation(
+            client,
+            "campaign_operation",
+            campaign_operation,
+        )
+    ]
+
+    for resource_name in remove_campaign_criterion_resource_names:
+        remove_operation = client.get_type("CampaignCriterionOperation")
+        remove_operation.remove = resource_name
+        operations.append(
+            _wrap_mutate_operation(
+                client,
+                "campaign_criterion_operation",
+                remove_operation,
+            )
+        )
+
+    proximity_operation = client.get_type("CampaignCriterionOperation")
+    criterion = proximity_operation.create
+    criterion.campaign = campaign_resource_name
+    criterion.proximity.geo_point.latitude_in_micro_degrees = int(
+        round(latitude * 1_000_000)
+    )
+    criterion.proximity.geo_point.longitude_in_micro_degrees = int(
+        round(longitude * 1_000_000)
+    )
+    criterion.proximity.radius = radius
+    criterion.proximity.radius_units = getattr(
+        client.enums.ProximityRadiusUnitsEnum, radius_units
+    )
+    if city_name:
+        criterion.proximity.address.city_name = city_name
+    criterion.proximity.address.country_code = country_code
+    operations.append(
+        _wrap_mutate_operation(
+            client,
+            "campaign_criterion_operation",
+            proximity_operation,
+        )
+    )
+
+    try:
+        response = _google_ads_mutate(client, customer_id, operations, dry_run)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "replace_campaign_geo_targeting_with_proximity",
+        "customer_id": customer_id,
+        "campaign_id": campaign_id,
+        "removed_campaign_criteria_count": len(
+            remove_campaign_criterion_resource_names
+        ),
+        "latitude": latitude,
+        "longitude": longitude,
+        "radius": radius,
+        "radius_units": radius_units,
+        "positive_geo_target_type": positive_geo_target_type,
+        "negative_geo_target_type": negative_geo_target_type,
         "resource_names": _result_resource_names(response),
     }
 
