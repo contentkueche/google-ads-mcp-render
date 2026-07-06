@@ -15,6 +15,7 @@
 """Test cases for the server module."""
 
 import unittest
+from unittest.mock import patch
 
 
 class TestUtils(unittest.TestCase):
@@ -29,3 +30,39 @@ class TestUtils(unittest.TestCase):
         from ads_mcp import server
 
         self.assertIsNotNone(server.mcp, "MCP server instance not initialized")
+
+    @patch.dict(
+        "os.environ",
+        {"GOOGLE_ADS_MCP_BASE_URL": "https://ck-google-ads-mcp.onrender.com"},
+    )
+    def test_http_allowed_hosts_include_public_base_url(self):
+        from ads_mcp import server
+
+        self.assertIn("ck-google-ads-mcp.onrender.com", server._http_allowed_hosts())
+        self.assertIn(
+            "https://ck-google-ads-mcp.onrender.com",
+            server._http_allowed_origins(),
+        )
+
+    @patch.dict(
+        "os.environ",
+        {
+            "GOOGLE_ADS_MCP_BASE_URL": "https://ck-google-ads-mcp.onrender.com",
+            "GOOGLE_ADS_MCP_ALLOWED_HOSTS": "custom.example.com",
+            "GOOGLE_ADS_MCP_ALLOWED_ORIGINS": "https://custom.example.com",
+        },
+    )
+    def test_http_allowed_hosts_preserve_env_overrides(self):
+        from ads_mcp import server
+
+        self.assertEqual(
+            server._http_allowed_hosts(),
+            ["custom.example.com", "ck-google-ads-mcp.onrender.com"],
+        )
+        self.assertEqual(
+            server._http_allowed_origins(),
+            [
+                "https://custom.example.com",
+                "https://ck-google-ads-mcp.onrender.com",
+            ],
+        )

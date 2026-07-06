@@ -32,10 +32,40 @@ from ads_mcp.resources import (
 
 
 import os
+from urllib.parse import urlsplit
+
+
+def _split_env_list(value: str | None) -> list[str]:
+    if not value:
+        return []
+    return [item.strip() for item in value.split(",") if item.strip()]
+
+
+def _public_base_url() -> str:
+    return os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080").rstrip(
+        "/"
+    )
+
+
+def _http_allowed_hosts() -> list[str]:
+    hosts = _split_env_list(os.environ.get("GOOGLE_ADS_MCP_ALLOWED_HOSTS"))
+    parsed = urlsplit(_public_base_url())
+    if parsed.hostname and parsed.hostname not in hosts:
+        hosts.append(parsed.hostname)
+    return hosts
+
+
+def _http_allowed_origins() -> list[str]:
+    origins = _split_env_list(os.environ.get("GOOGLE_ADS_MCP_ALLOWED_ORIGINS"))
+    base_url = _public_base_url()
+    parsed = urlsplit(base_url)
+    if parsed.scheme and parsed.hostname and base_url not in origins:
+        origins.append(base_url)
+    return origins
 
 
 def _oauth_resource_metadata() -> dict[str, object]:
-    base_url = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080").rstrip("/")
+    base_url = _public_base_url()
     return {
         "resource": f"{base_url}/mcp",
         "authorization_servers": [f"{base_url}/"],
@@ -61,7 +91,13 @@ def run_server() -> None:
     port = int(os.environ.get("PORT", "8080"))
 
     if _CLIENT_ID and _CLIENT_SECRET:
-        mcp.run(transport="streamable-http", port=port, host="0.0.0.0")
+        mcp.run(
+            transport="streamable-http",
+            port=port,
+            host="0.0.0.0",
+            allowed_hosts=_http_allowed_hosts(),
+            allowed_origins=_http_allowed_origins(),
+        )
     else:
         mcp.run()
 
