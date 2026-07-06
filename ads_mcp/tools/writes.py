@@ -300,7 +300,6 @@ def _build_webpage_conversion_action_create_operation(
     default_currency_code: str,
     always_use_default_value: bool,
     primary_for_goal: bool,
-    include_in_conversions_metric: bool,
     click_through_lookback_window_days: int,
     view_through_lookback_window_days: int,
 ) -> Any:
@@ -321,9 +320,6 @@ def _build_webpage_conversion_action_create_operation(
         counting_type,
     )
     conversion_action.primary_for_goal = primary_for_goal
-    conversion_action.include_in_conversions_metric = (
-        include_in_conversions_metric
-    )
     conversion_action.click_through_lookback_window_days = (
         click_through_lookback_window_days
     )
@@ -1547,7 +1543,6 @@ def create_webpage_conversion_action(
     default_currency_code: str = "EUR",
     always_use_default_value: bool = False,
     primary_for_goal: bool = True,
-    include_in_conversions_metric: bool = True,
     click_through_lookback_window_days: int = 90,
     view_through_lookback_window_days: int = 1,
     dry_run: bool = True,
@@ -1594,7 +1589,6 @@ def create_webpage_conversion_action(
         default_currency_code=currency,
         always_use_default_value=always_use_default_value,
         primary_for_goal=primary_for_goal,
-        include_in_conversions_metric=include_in_conversions_metric,
         click_through_lookback_window_days=(
             click_through_lookback_window_days
         ),
@@ -1625,6 +1619,5 @@ def create_webpage_conversion_action(
         "default_value": default_value,
         "default_currency_code": currency,
         "primary_for_goal": primary_for_goal,
-        "include_in_conversions_metric": include_in_conversions_metric,
         "resource_names": _result_resource_names(response),
     }
