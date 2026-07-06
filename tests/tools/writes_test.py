@@ -216,6 +216,47 @@ class TestWrites(unittest.TestCase):
 
     @patch("ads_mcp.tools.writes.utils.get_googleads_service")
     @patch("ads_mcp.tools.writes.utils.get_googleads_client")
+    def test_update_campaign_name_validate_only(
+        self, mock_get_client, mock_get_service
+    ):
+        client = MagicMock()
+        client.get_type.side_effect = lambda name: {
+            "CampaignOperation": operation_with_update(),
+            "MutateCampaignsRequest": mutate_request(),
+        }[name]
+        mock_get_client.return_value = client
+
+        service = MagicMock()
+        service.campaign_path.return_value = "customers/123/campaigns/456"
+        service.mutate_campaigns.return_value = SimpleNamespace(results=[])
+        mock_get_service.return_value = service
+
+        result = writes.update_campaign_name(
+            customer_id="123-456-7890",
+            campaign_id="456",
+            name="Launch campaign",
+        )
+
+        self.assertFalse(result["applied"])
+        self.assertTrue(result["validated_only"])
+        request = service.mutate_campaigns.call_args.kwargs["request"]
+        self.assertEqual(request.customer_id, "1234567890")
+        self.assertTrue(request.validate_only)
+        self.assertEqual(request.operations[0].update.name, "Launch campaign")
+        self.assertEqual(request.operations[0].update_mask.paths, ["name"])
+
+    def test_update_campaign_name_real_write_requires_confirmation(self):
+        with self.assertRaisesRegex(ToolError, "confirm_write=true"):
+            writes.update_campaign_name(
+                customer_id="123",
+                campaign_id="456",
+                name="Launch campaign",
+                dry_run=False,
+                confirm_write=False,
+            )
+
+    @patch("ads_mcp.tools.writes.utils.get_googleads_service")
+    @patch("ads_mcp.tools.writes.utils.get_googleads_client")
     def test_update_campaign_budget_decrease_validate_only(
         self, mock_get_client, mock_get_service
     ):

@@ -883,6 +883,59 @@ def update_campaign_status(
 
 
 @writes_mcp.tool()
+def update_campaign_name(
+    customer_id: str,
+    campaign_id: str,
+    name: str,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update a campaign name.
+
+    Defaults to validate-only mode. A real write requires dry_run=false and
+    confirm_write=true.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    campaign_id = _normalize_id(campaign_id, "campaign_id")
+    name = _validate_name(name, "name")
+
+    if not dry_run and not confirm_write:
+        raise ToolError(
+            "Set confirm_write=true with dry_run=false to update a campaign name."
+        )
+
+    client = utils.get_googleads_client()
+    campaign_service = utils.get_googleads_service("CampaignService")
+    operation = client.get_type("CampaignOperation")
+    campaign = operation.update
+    campaign.resource_name = campaign_service.campaign_path(
+        customer_id, campaign_id
+    )
+    campaign.name = name
+    operation.update_mask.paths.append("name")
+
+    request = client.get_type("MutateCampaignsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = campaign_service.mutate_campaigns(request=request)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_campaign_name",
+        "customer_id": customer_id,
+        "campaign_id": campaign_id,
+        "name": name,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
 def update_ad_group_status(
     customer_id: str,
     ad_group_resource_name: str,
