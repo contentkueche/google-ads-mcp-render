@@ -863,6 +863,172 @@ def update_campaign_status(
 
 
 @writes_mcp.tool()
+def update_ad_group_status(
+    customer_id: str,
+    ad_group_resource_name: str,
+    status: EntityStatus,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update a Search ad group's status."""
+    customer_id = _normalize_customer_id(customer_id)
+    ad_group_resource_name = _validate_customer_resource_name(
+        ad_group_resource_name,
+        "ad_group_resource_name",
+        customer_id,
+        "adGroups",
+    )
+    _require_confirmed_write(dry_run, confirm_write, "update an ad group")
+
+    client = utils.get_googleads_client()
+    ad_group_service = utils.get_googleads_service("AdGroupService")
+    operation = client.get_type("AdGroupOperation")
+    ad_group = operation.update
+    ad_group.resource_name = ad_group_resource_name
+    ad_group.status = getattr(client.enums.AdGroupStatusEnum, status)
+    operation.update_mask.paths.append("status")
+
+    request = client.get_type("MutateAdGroupsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = ad_group_service.mutate_ad_groups(request=request)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_ad_group_status",
+        "customer_id": customer_id,
+        "ad_group_resource_name": ad_group_resource_name,
+        "status": status,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def update_ad_group_ad_status(
+    customer_id: str,
+    ad_group_ad_resource_name: str,
+    status: EntityStatus,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update an ad group's ad status."""
+    customer_id = _normalize_customer_id(customer_id)
+    ad_group_ad_resource_name = _validate_customer_resource_name(
+        ad_group_ad_resource_name,
+        "ad_group_ad_resource_name",
+        customer_id,
+        "adGroupAds",
+    )
+    _require_confirmed_write(dry_run, confirm_write, "update an ad group ad")
+
+    client = utils.get_googleads_client()
+    ad_group_ad_service = utils.get_googleads_service("AdGroupAdService")
+    operation = client.get_type("AdGroupAdOperation")
+    ad_group_ad = operation.update
+    ad_group_ad.resource_name = ad_group_ad_resource_name
+    ad_group_ad.status = getattr(client.enums.AdGroupAdStatusEnum, status)
+    operation.update_mask.paths.append("status")
+
+    request = client.get_type("MutateAdGroupAdsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = ad_group_ad_service.mutate_ad_group_ads(request=request)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_ad_group_ad_status",
+        "customer_id": customer_id,
+        "ad_group_ad_resource_name": ad_group_ad_resource_name,
+        "status": status,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def update_ad_group_criteria_status(
+    customer_id: str,
+    ad_group_criterion_resource_names: List[str],
+    status: EntityStatus,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update one or more ad group criterion statuses."""
+    customer_id = _normalize_customer_id(customer_id)
+    if not ad_group_criterion_resource_names:
+        raise ToolError(
+            "ad_group_criterion_resource_names must include at least one item."
+        )
+    if len(ad_group_criterion_resource_names) > 200:
+        raise ToolError(
+            "ad_group_criterion_resource_names supports at most 200 items."
+        )
+    resource_names = [
+        _validate_customer_resource_name(
+            resource_name,
+            "ad_group_criterion_resource_name",
+            customer_id,
+            "adGroupCriteria",
+        )
+        for resource_name in ad_group_criterion_resource_names
+    ]
+    _require_confirmed_write(
+        dry_run,
+        confirm_write,
+        "update ad group criteria",
+    )
+
+    client = utils.get_googleads_client()
+    criterion_service = utils.get_googleads_service(
+        "AdGroupCriterionService"
+    )
+    operations = []
+    for resource_name in resource_names:
+        operation = client.get_type("AdGroupCriterionOperation")
+        criterion = operation.update
+        criterion.resource_name = resource_name
+        criterion.status = getattr(
+            client.enums.AdGroupCriterionStatusEnum,
+            status,
+        )
+        operation.update_mask.paths.append("status")
+        operations.append(operation)
+
+    request = client.get_type("MutateAdGroupCriteriaRequest")
+    request.customer_id = customer_id
+    request.operations.extend(operations)
+    request.validate_only = dry_run
+
+    try:
+        response = criterion_service.mutate_ad_group_criteria(
+            request=request
+        )
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_ad_group_criteria_status",
+        "customer_id": customer_id,
+        "criterion_count": len(resource_names),
+        "status": status,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
 def update_campaign_budget(
     customer_id: str,
     campaign_id: str,
