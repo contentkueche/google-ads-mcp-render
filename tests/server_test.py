@@ -15,7 +15,12 @@
 """Test cases for the server module."""
 
 import unittest
+from types import SimpleNamespace
 from unittest.mock import patch
+
+from mcp.server.auth.provider import TokenError
+
+from ads_mcp import coordinator
 
 
 class TestUtils(unittest.TestCase):
@@ -38,7 +43,9 @@ class TestUtils(unittest.TestCase):
     def test_http_allowed_hosts_include_public_base_url(self):
         from ads_mcp import server
 
-        self.assertIn("ck-google-ads-mcp.onrender.com", server._http_allowed_hosts())
+        self.assertIn(
+            "ck-google-ads-mcp.onrender.com", server._http_allowed_hosts()
+        )
         self.assertIn(
             "https://ck-google-ads-mcp.onrender.com",
             server._http_allowed_origins(),
@@ -66,3 +73,73 @@ class TestUtils(unittest.TestCase):
                 "https://ck-google-ads-mcp.onrender.com",
             ],
         )
+
+    def test_missing_required_google_scopes_detects_ads_scope(self):
+        missing = coordinator._missing_required_google_scopes(
+            required_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
+            granted_scope_value=(
+                "email profile "
+                "https://www.googleapis.com/auth/userinfo.email openid"
+            ),
+            requested_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
+        )
+
+        self.assertEqual(
+            missing,
+            [
+                "https://www.googleapis.com/auth/adwords",
+            ],
+        )
+
+    def test_missing_required_google_scopes_accepts_aliases(self):
+        missing = coordinator._missing_required_google_scopes(
+            required_scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
+            granted_scope_value=(
+                "email profile openid "
+                "https://www.googleapis.com/auth/adwords"
+            ),
+            requested_scopes=[],
+        )
+
+        self.assertEqual(missing, [])
+
+
+class AsyncStore:
+    def __init__(self, value):
+        self.value = value
+        self.deleted_key = None
+
+    async def get(self, key):
+        return self.value
+
+    async def delete(self, key):
+        self.deleted_key = key
+
+
+class TestGoogleAdsProvider(unittest.IsolatedAsyncioTestCase):
+    async def test_exchange_authorization_code_rejects_partial_grant(self):
+        provider = object.__new__(coordinator.GoogleAdsProvider)
+        provider.required_scopes = coordinator._REQUIRED_GOOGLE_SCOPES
+        provider._code_store = AsyncStore(
+            SimpleNamespace(
+                idp_tokens={
+                    "scope": (
+                        "email profile "
+                        "https://www.googleapis.com/auth/userinfo.email openid"
+                    )
+                }
+            )
+        )
+
+        with self.assertRaises(TokenError) as raised:
+            await provider.exchange_authorization_code(
+                client=SimpleNamespace(),
+                authorization_code=SimpleNamespace(
+                    code="auth-code",
+                    scopes=coordinator._REQUIRED_GOOGLE_SCOPES,
+                ),
+            )
+
+        self.assertEqual(raised.exception.error, "invalid_scope")
+        self.assertIn("auth/adwords", raised.exception.error_description)
+        self.assertEqual(provider._code_store.deleted_key, "auth-code")

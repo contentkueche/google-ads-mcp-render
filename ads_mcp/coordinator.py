@@ -20,13 +20,16 @@ of the server.
 """
 
 import os
+from typing import Iterable
 
 from cryptography.fernet import Fernet
 from fastmcp import FastMCP
 from fastmcp.server.auth.providers.google import GoogleProvider
+from fastmcp.utilities.auth import parse_scopes
 from key_value.aio.stores.redis import RedisStore
 from key_value.aio.wrappers.encryption import FernetEncryptionWrapper
 from key_value.aio.wrappers.prefix_collections import PrefixCollectionsWrapper
+from mcp.server.auth.provider import TokenError
 
 _CLIENT_ID = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_ID")
 _CLIENT_SECRET = os.environ.get("GOOGLE_ADS_MCP_OAUTH_CLIENT_SECRET")
@@ -34,6 +37,65 @@ _BASE_URL = os.environ.get("GOOGLE_ADS_MCP_BASE_URL", "http://localhost:8080")
 _JWT_SIGNING_KEY = os.environ.get("JWT_SIGNING_KEY")
 _STORAGE_ENCRYPTION_KEY = os.environ.get("STORAGE_ENCRYPTION_KEY")
 _REDIS_URL = os.environ.get("REDIS_URL")
+_GOOGLE_ADS_SCOPE = "https://www.googleapis.com/auth/adwords"
+_REQUIRED_GOOGLE_SCOPES = [
+    "openid",
+    "https://www.googleapis.com/auth/userinfo.email",
+    "https://www.googleapis.com/auth/userinfo.profile",
+    _GOOGLE_ADS_SCOPE,
+]
+
+_GOOGLE_SCOPE_ALIASES = {
+    "email": "https://www.googleapis.com/auth/userinfo.email",
+    "profile": "https://www.googleapis.com/auth/userinfo.profile",
+}
+
+
+def _normalize_google_scope(scope: str) -> str:
+    return _GOOGLE_SCOPE_ALIASES.get(scope, scope)
+
+
+def _missing_required_google_scopes(
+    required_scopes: Iterable[str],
+    granted_scope_value: str | None,
+    requested_scopes: Iterable[str],
+) -> list[str]:
+    granted_scopes = parse_scopes(granted_scope_value or "") or list(
+        requested_scopes
+    )
+    normalized_granted = {
+        _normalize_google_scope(scope) for scope in granted_scopes
+    }
+    return [
+        scope
+        for scope in required_scopes
+        if _normalize_google_scope(scope) not in normalized_granted
+    ]
+
+
+class GoogleAdsProvider(GoogleProvider):
+    """Google OAuth provider that rejects partial grants for Google Ads access."""
+
+    async def exchange_authorization_code(self, client, authorization_code):
+        code_model = await self._code_store.get(key=authorization_code.code)
+        if code_model:
+            missing_scopes = _missing_required_google_scopes(
+                required_scopes=self.required_scopes,
+                granted_scope_value=code_model.idp_tokens.get("scope"),
+                requested_scopes=authorization_code.scopes,
+            )
+            if missing_scopes:
+                await self._code_store.delete(key=authorization_code.code)
+                raise TokenError(
+                    "invalid_scope",
+                    "Google did not grant all required scopes. Reconnect and "
+                    "approve Google Ads access. Missing scopes: "
+                    + ", ".join(missing_scopes),
+                )
+
+        return await super().exchange_authorization_code(
+            client, authorization_code
+        )
 
 
 def _build_client_storage():
@@ -48,20 +110,17 @@ def _build_client_storage():
         fernet=Fernet(_STORAGE_ENCRYPTION_KEY.encode()),
     )
 
+
 if _CLIENT_ID and _CLIENT_SECRET:
     storage = _build_client_storage()
-    auth = GoogleProvider(
+    auth = GoogleAdsProvider(
         client_id=_CLIENT_ID,
         client_secret=_CLIENT_SECRET,
         base_url=_BASE_URL,
         jwt_signing_key=_JWT_SIGNING_KEY,
         client_storage=storage,
-        required_scopes=[
-            "openid",
-            "https://www.googleapis.com/auth/userinfo.email",
-            "https://www.googleapis.com/auth/userinfo.profile",
-            "https://www.googleapis.com/auth/adwords",
-        ],
+        required_scopes=_REQUIRED_GOOGLE_SCOPES,
+        extra_authorize_params={"include_granted_scopes": "true"},
     )
     mcp = FastMCP("Google Ads Server", auth=auth)
 else:
