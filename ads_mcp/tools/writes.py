@@ -1128,6 +1128,64 @@ def update_ad_group_status(
 
 
 @writes_mcp.tool()
+def update_ad_group_cpc_bid_micros(
+    customer_id: str,
+    ad_group_resource_name: str,
+    cpc_bid_micros: int,
+    max_cpc_bid_micros: int,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update a Search ad group's default CPC bid.
+
+    Defaults to validate-only mode. A real write requires dry_run=false and
+    confirm_write=true.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    ad_group_resource_name = _validate_customer_resource_name(
+        ad_group_resource_name,
+        "ad_group_resource_name",
+        customer_id,
+        "adGroups",
+    )
+    _validate_positive_micros(cpc_bid_micros, "cpc_bid_micros")
+    _validate_positive_micros(max_cpc_bid_micros, "max_cpc_bid_micros")
+    if cpc_bid_micros > max_cpc_bid_micros:
+        raise ToolError("cpc_bid_micros exceeds max_cpc_bid_micros.")
+    _require_confirmed_write(
+        dry_run, confirm_write, "update an ad group's CPC bid"
+    )
+
+    client = utils.get_googleads_client()
+    ad_group_service = utils.get_googleads_service("AdGroupService")
+    operation = client.get_type("AdGroupOperation")
+    ad_group = operation.update
+    ad_group.resource_name = ad_group_resource_name
+    ad_group.cpc_bid_micros = cpc_bid_micros
+    operation.update_mask.paths.append("cpc_bid_micros")
+
+    request = client.get_type("MutateAdGroupsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = ad_group_service.mutate_ad_groups(request=request)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_ad_group_cpc_bid_micros",
+        "customer_id": customer_id,
+        "ad_group_resource_name": ad_group_resource_name,
+        "cpc_bid_micros": cpc_bid_micros,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
 def update_ad_group_ad_status(
     customer_id: str,
     ad_group_ad_resource_name: str,
