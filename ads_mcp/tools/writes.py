@@ -35,6 +35,13 @@ EuPoliticalAdvertisingStatus = Literal[
     "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
 ]
 BiddingStrategyType = Literal["MANUAL_CPC", "TARGET_SPEND"]
+ConversionActionStatus = Literal["ENABLED", "PAUSED"]
+ConversionActionCategory = Literal[
+    "SUBMIT_LEAD_FORM",
+    "CONTACT",
+    "QUALIFIED_LEAD",
+]
+ConversionActionCountingType = Literal["ONE_PER_CLICK", "MANY_PER_CLICK"]
 
 _TEMP_BUDGET_RESOURCE_NAME = "customers/{customer_id}/campaignBudgets/-1"
 _TEMP_CAMPAIGN_RESOURCE_NAME = "customers/{customer_id}/campaigns/-2"
@@ -279,6 +286,57 @@ def _build_campaign_budget_create_operation(
     budget.delivery_method = client.enums.BudgetDeliveryMethodEnum.STANDARD
     budget.amount_micros = amount_micros
     budget.explicitly_shared = explicitly_shared
+    return operation
+
+
+def _build_webpage_conversion_action_create_operation(
+    client: Any,
+    *,
+    name: str,
+    category: ConversionActionCategory,
+    status: ConversionActionStatus,
+    counting_type: ConversionActionCountingType,
+    default_value: float,
+    default_currency_code: str,
+    always_use_default_value: bool,
+    primary_for_goal: bool,
+    include_in_conversions_metric: bool,
+    click_through_lookback_window_days: int,
+    view_through_lookback_window_days: int,
+) -> Any:
+    operation = client.get_type("ConversionActionOperation")
+    conversion_action = operation.create
+    conversion_action.name = name
+    conversion_action.type_ = client.enums.ConversionActionTypeEnum.WEBPAGE
+    conversion_action.category = getattr(
+        client.enums.ConversionActionCategoryEnum,
+        category,
+    )
+    conversion_action.status = getattr(
+        client.enums.ConversionActionStatusEnum,
+        status,
+    )
+    conversion_action.counting_type = getattr(
+        client.enums.ConversionActionCountingTypeEnum,
+        counting_type,
+    )
+    conversion_action.primary_for_goal = primary_for_goal
+    conversion_action.include_in_conversions_metric = (
+        include_in_conversions_metric
+    )
+    conversion_action.click_through_lookback_window_days = (
+        click_through_lookback_window_days
+    )
+    conversion_action.view_through_lookback_window_days = (
+        view_through_lookback_window_days
+    )
+    conversion_action.value_settings.default_value = default_value
+    conversion_action.value_settings.default_currency_code = (
+        default_currency_code
+    )
+    conversion_action.value_settings.always_use_default_value = (
+        always_use_default_value
+    )
     return operation
 
 
@@ -1474,5 +1532,99 @@ def create_search_campaign_bundle(
             "campaign": campaign_resource_name,
             "ad_group": ad_group_resource_name,
         },
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def create_webpage_conversion_action(
+    customer_id: str,
+    name: str,
+    category: ConversionActionCategory = "SUBMIT_LEAD_FORM",
+    status: ConversionActionStatus = "ENABLED",
+    counting_type: ConversionActionCountingType = "ONE_PER_CLICK",
+    default_value: float = 1.0,
+    default_currency_code: str = "EUR",
+    always_use_default_value: bool = False,
+    primary_for_goal: bool = True,
+    include_in_conversions_metric: bool = True,
+    click_through_lookback_window_days: int = 90,
+    view_through_lookback_window_days: int = 1,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Create a guarded website conversion action for Google Ads tags.
+
+    Defaults to validate-only mode. A real write requires dry_run=false and
+    confirm_write=true. The conversion action is created as type WEBPAGE so it
+    can be fired from GTM via a Google Ads conversion tag or gtag event.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    name = _validate_name(name, "name")
+    _require_confirmed_write(
+        dry_run,
+        confirm_write,
+        "create a webpage conversion action",
+    )
+    if default_value < 0:
+        raise ToolError("default_value must not be negative.")
+    currency = default_currency_code.strip().upper()
+    if len(currency) != 3 or not currency.isalpha():
+        raise ToolError("default_currency_code must be a 3-letter ISO code.")
+    if not 1 <= click_through_lookback_window_days <= 90:
+        raise ToolError(
+            "click_through_lookback_window_days must be between 1 and 90."
+        )
+    if not 1 <= view_through_lookback_window_days <= 30:
+        raise ToolError(
+            "view_through_lookback_window_days must be between 1 and 30."
+        )
+
+    client = utils.get_googleads_client()
+    conversion_action_service = utils.get_googleads_service(
+        "ConversionActionService"
+    )
+    operation = _build_webpage_conversion_action_create_operation(
+        client,
+        name=name,
+        category=category,
+        status=status,
+        counting_type=counting_type,
+        default_value=default_value,
+        default_currency_code=currency,
+        always_use_default_value=always_use_default_value,
+        primary_for_goal=primary_for_goal,
+        include_in_conversions_metric=include_in_conversions_metric,
+        click_through_lookback_window_days=(
+            click_through_lookback_window_days
+        ),
+        view_through_lookback_window_days=view_through_lookback_window_days,
+    )
+
+    request = client.get_type("MutateConversionActionsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = conversion_action_service.mutate_conversion_actions(
+            request=request
+        )
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "create_webpage_conversion_action",
+        "customer_id": customer_id,
+        "name": name,
+        "category": category,
+        "status": status,
+        "counting_type": counting_type,
+        "default_value": default_value,
+        "default_currency_code": currency,
+        "primary_for_goal": primary_for_goal,
+        "include_in_conversions_metric": include_in_conversions_metric,
         "resource_names": _result_resource_names(response),
     }
