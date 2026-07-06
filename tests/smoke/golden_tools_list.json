@@ -216,6 +216,660 @@
           "tags": []
         }
       },
+      "description": "Create a Search standard ad group under an existing campaign.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cpc_bid_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_resource_name",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_ad_group",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Create an average daily campaign budget with spend guardrails.\n\nDefaults to validate-only mode. A real create requires dry_run=false and\nconfirm_write=true. Shared budgets are blocked unless\nallow_shared_budget=true.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_shared_budget": {
+            "default": false,
+            "type": "boolean"
+          },
+          "amount_micros": {
+            "type": "integer"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "explicitly_shared": {
+            "default": false,
+            "type": "boolean"
+          },
+          "max_daily_budget_amount_micros": {
+            "type": "integer"
+          },
+          "monthly_spend_cap_amount_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "amount_micros",
+          "max_daily_budget_amount_micros"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_campaign_budget",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Create one or more keyword criteria under an existing ad group.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "keyword_texts": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "match_type": {
+            "default": "BROAD",
+            "enum": [
+              "BROAD",
+              "PHRASE",
+              "EXACT"
+            ],
+            "type": "string"
+          },
+          "negative": {
+            "default": false,
+            "type": "boolean"
+          },
+          "status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_resource_name",
+          "keyword_texts"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_keywords",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Create a responsive search ad under an existing ad group.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "descriptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "final_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "path1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "path2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_resource_name",
+          "final_urls",
+          "headlines",
+          "descriptions"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_responsive_search_ad",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Create a Search campaign attached to an existing budget.\n\nDefaults to a paused campaign in validate-only mode. The referenced budget\nis read first so daily cap and shared-budget guardrails still apply.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "allow_shared_budget": {
+            "default": false,
+            "type": "boolean"
+          },
+          "bidding_strategy_type": {
+            "default": "MANUAL_CPC",
+            "enum": [
+              "MANUAL_CPC",
+              "TARGET_SPEND"
+            ],
+            "type": "string"
+          },
+          "budget_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "contains_eu_political_advertising": {
+            "default": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+            "enum": [
+              "CONTAINS_EU_POLITICAL_ADVERTISING",
+              "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+            ],
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "end_date_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "max_daily_budget_amount_micros": {
+            "type": "integer"
+          },
+          "monthly_spend_cap_amount_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "name": {
+            "type": "string"
+          },
+          "start_date_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "target_content_network": {
+            "default": false,
+            "type": "boolean"
+          },
+          "target_google_search": {
+            "default": true,
+            "type": "boolean"
+          },
+          "target_partner_search_network": {
+            "default": false,
+            "type": "boolean"
+          },
+          "target_search_network": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "customer_id",
+          "name",
+          "budget_resource_name",
+          "max_daily_budget_amount_micros"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_search_campaign",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Create a complete paused Search campaign structure atomically.\n\nCreates a non-shared budget, Search campaign, Search standard ad group,\noptional location and language criteria, optional keywords, and one\nresponsive search ad in a single GoogleAdsService.Mutate request using\ntemporary resource names. Defaults to validate-only mode.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_name": {
+            "type": "string"
+          },
+          "ad_group_status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "ad_status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "bidding_strategy_type": {
+            "default": "MANUAL_CPC",
+            "enum": [
+              "MANUAL_CPC",
+              "TARGET_SPEND"
+            ],
+            "type": "string"
+          },
+          "budget_amount_micros": {
+            "type": "integer"
+          },
+          "budget_name": {
+            "type": "string"
+          },
+          "campaign_name": {
+            "type": "string"
+          },
+          "campaign_status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "contains_eu_political_advertising": {
+            "default": "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
+            "enum": [
+              "CONTAINS_EU_POLITICAL_ADVERTISING",
+              "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING"
+            ],
+            "type": "string"
+          },
+          "cpc_bid_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "descriptions": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "end_date_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "final_urls": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "geo_target_constant_resource_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "headlines": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "keyword_match_type": {
+            "default": "BROAD",
+            "enum": [
+              "BROAD",
+              "PHRASE",
+              "EXACT"
+            ],
+            "type": "string"
+          },
+          "keyword_status": {
+            "default": "PAUSED",
+            "enum": [
+              "ENABLED",
+              "PAUSED"
+            ],
+            "type": "string"
+          },
+          "keyword_texts": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "language_constant_resource_names": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "max_daily_budget_amount_micros": {
+            "type": "integer"
+          },
+          "monthly_spend_cap_amount_micros": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "path1": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "path2": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "start_date_time": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null
+          },
+          "target_content_network": {
+            "default": false,
+            "type": "boolean"
+          },
+          "target_google_search": {
+            "default": true,
+            "type": "boolean"
+          },
+          "target_partner_search_network": {
+            "default": false,
+            "type": "boolean"
+          },
+          "target_search_network": {
+            "default": true,
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_name",
+          "budget_name",
+          "budget_amount_micros",
+          "max_daily_budget_amount_micros",
+          "ad_group_name",
+          "final_urls",
+          "headlines",
+          "descriptions"
+        ],
+        "type": "object"
+      },
+      "name": "writes_create_search_campaign_bundle",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
       "description": "Update a campaign's average daily budget with budget guardrails.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true. Increases require confirm_budget_increase=true, cannot\nexceed max_increase_percent, cannot exceed max_daily_budget_amount_micros,\nand can optionally be checked against a 30.4x monthly cap.",
       "inputSchema": {
         "additionalProperties": false,

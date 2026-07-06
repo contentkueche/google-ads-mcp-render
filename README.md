@@ -25,10 +25,20 @@ to provide several
 - `update_campaign_budget`: Updates a campaign average daily budget with
   guardrails for shared budgets, max daily budget caps, monthly 30.4x spend
   caps, and budget increases. Defaults to validate-only mode.
+- `create_campaign_budget`: Creates a guarded average daily campaign budget.
+- `create_search_campaign`: Creates a paused Search campaign against an
+  existing budget after checking budget guardrails.
+- `create_ad_group`: Creates a Search standard ad group under a campaign.
+- `create_keywords`: Creates keyword criteria under an ad group.
+- `create_responsive_search_ad`: Creates a responsive search ad under an ad
+  group.
+- `create_search_campaign_bundle`: Creates a complete Search campaign
+  structure atomically with a non-shared budget, campaign, ad group, optional
+  targeting criteria, optional keywords, and one responsive search ad.
 
 By default, tool namespaces are enabled, so MCP clients expose these as
 `budget_audit_budget_pitfalls`, `writes_update_campaign_status`, and
-`writes_update_campaign_budget`.
+`writes_update_campaign_budget`, plus the `writes_create_*` tools listed above.
 
 ### Configuring and Namespacing Tools
 
@@ -81,6 +91,16 @@ the MCP tool layer:
   when the target daily budget could exceed roughly `30.4x` that monthly cap.
 - Explicitly shared budgets are blocked unless `allow_shared_budget=true`,
   because a shared budget can affect multiple campaigns.
+- Campaign creation tools default all newly-created serving entities to
+  `PAUSED`.
+- `create_search_campaign_bundle` uses `GoogleAdsService.Mutate` with temporary
+  resource names, so the budget, campaign, ad group, criteria, keywords, and ad
+  validate or create as a single dependent structure.
+- Responsive search ad creation requires at least three headlines, two
+  descriptions, and one final URL before the API call is attempted.
+- Search campaign creation requires an explicit EU political advertising
+  declaration via `contains_eu_political_advertising`; the default is
+  `DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING`.
 
 For recurring optimization jobs, start with `audit_budget_pitfalls` and
 validate-only write calls. Only enable confirmed writes after reviewing the

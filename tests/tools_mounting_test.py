@@ -53,6 +53,12 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn("budget_audit_budget_pitfalls", tool_names)
         self.assertIn("writes_update_campaign_status", tool_names)
         self.assertIn("writes_update_campaign_budget", tool_names)
+        self.assertIn("writes_create_campaign_budget", tool_names)
+        self.assertIn("writes_create_search_campaign", tool_names)
+        self.assertIn("writes_create_ad_group", tool_names)
+        self.assertIn("writes_create_keywords", tool_names)
+        self.assertIn("writes_create_responsive_search_ad", tool_names)
+        self.assertIn("writes_create_search_campaign_bundle", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_disabled_namespaces(self, mock_load):
@@ -82,6 +88,12 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn("budget_audit_budget_pitfalls", tool_names)
         self.assertNotIn("writes_update_campaign_status", tool_names)
         self.assertNotIn("writes_update_campaign_budget", tool_names)
+        self.assertNotIn("writes_create_campaign_budget", tool_names)
+        self.assertNotIn("writes_create_search_campaign", tool_names)
+        self.assertNotIn("writes_create_ad_group", tool_names)
+        self.assertNotIn("writes_create_keywords", tool_names)
+        self.assertNotIn("writes_create_responsive_search_ad", tool_names)
+        self.assertNotIn("writes_create_search_campaign_bundle", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_custom_prefixes(self, mock_load):
@@ -110,6 +122,12 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn("guardrails_audit_budget_pitfalls", tool_names)
         self.assertIn("mutate_update_campaign_status", tool_names)
         self.assertIn("mutate_update_campaign_budget", tool_names)
+        self.assertIn("mutate_create_campaign_budget", tool_names)
+        self.assertIn("mutate_create_search_campaign", tool_names)
+        self.assertIn("mutate_create_ad_group", tool_names)
+        self.assertIn("mutate_create_keywords", tool_names)
+        self.assertIn("mutate_create_responsive_search_ad", tool_names)
+        self.assertIn("mutate_create_search_campaign_bundle", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_fine_grained_tool_enablement(self, mock_load):
