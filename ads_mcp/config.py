@@ -28,7 +28,7 @@ DEFAULT_CONFIG_FILE = "tools_config.yaml"
 CONFIG_PATH_ENV_VAR = "GOOGLE_ADS_MCP_TOOLS_CONFIG"
 
 # Default categories that are supported by the server
-ALL_CATEGORIES = ["customers", "search", "metadata"]
+ALL_CATEGORIES = ["customers", "search", "metadata", "budget", "writes"]
 
 
 class ToolsConfig:
@@ -65,9 +65,7 @@ class ToolsConfig:
 
         # 4: fall back to the default config bundled with the package so that
         # installed deployments (e.g. ``pipx run``) work without extra setup.
-        bundled = importlib.resources.files("ads_mcp").joinpath(
-            DEFAULT_CONFIG_FILE
-        )
+        bundled = importlib.resources.files("ads_mcp").joinpath(DEFAULT_CONFIG_FILE)
         if bundled.is_file():
             logger.info(
                 "No local '%s' found; using the bundled default configuration.",

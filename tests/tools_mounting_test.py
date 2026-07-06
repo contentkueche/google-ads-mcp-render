@@ -34,6 +34,8 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
                     "customers": True,
                     "search": True,
                     "metadata": True,
+                    "budget": True,
+                    "writes": True,
                 }
             }
         )
@@ -48,6 +50,9 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn("customers_list_accessible_customers", tool_names)
         self.assertIn("search_search", tool_names)
         self.assertIn("metadata_get_resource_metadata", tool_names)
+        self.assertIn("budget_audit_budget_pitfalls", tool_names)
+        self.assertIn("writes_update_campaign_status", tool_names)
+        self.assertIn("writes_update_campaign_budget", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_disabled_namespaces(self, mock_load):
@@ -59,6 +64,8 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
                     "customers": True,
                     "search": False,
                     "metadata": False,
+                    "budget": False,
+                    "writes": False,
                 }
             }
         )
@@ -72,6 +79,9 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn("customers_list_accessible_customers", tool_names)
         self.assertNotIn("search_search", tool_names)
         self.assertNotIn("metadata_get_resource_metadata", tool_names)
+        self.assertNotIn("budget_audit_budget_pitfalls", tool_names)
+        self.assertNotIn("writes_update_campaign_status", tool_names)
+        self.assertNotIn("writes_update_campaign_budget", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_custom_prefixes(self, mock_load):
@@ -82,6 +92,8 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
                     "customers": "accounts",
                     "search": "query",
                     "metadata": "info",
+                    "budget": "guardrails",
+                    "writes": "mutate",
                 }
             }
         )
@@ -95,6 +107,9 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn("accounts_list_accessible_customers", tool_names)
         self.assertIn("query_search", tool_names)
         self.assertIn("info_get_resource_metadata", tool_names)
+        self.assertIn("guardrails_audit_budget_pitfalls", tool_names)
+        self.assertIn("mutate_update_campaign_status", tool_names)
+        self.assertIn("mutate_update_campaign_budget", tool_names)
 
     @patch("ads_mcp.config.ToolsConfig.load")
     async def test_mounting_fine_grained_tool_enablement(self, mock_load):

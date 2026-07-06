@@ -17,6 +17,18 @@ to provide several
 - `get_resource_metadata`: Retrieves metadata about a Google Ads API resource type, for example "campaign". This is useful to understand the structure of the data and what fields are available for querying.
 - `list_accessible_customers`: Returns ids of customers directly accessible
   by the user authenticating the call.
+- `audit_budget_pitfalls`: Audits campaign budgets for shared budgets, spend
+  without conversions, possible daily overdelivery, and projected monthly spend
+  above a caller-provided cap.
+- `update_campaign_status`: Updates a campaign status to `ENABLED` or
+  `PAUSED`. Defaults to validate-only mode.
+- `update_campaign_budget`: Updates a campaign average daily budget with
+  guardrails for shared budgets, max daily budget caps, monthly 30.4x spend
+  caps, and budget increases. Defaults to validate-only mode.
+
+By default, tool namespaces are enabled, so MCP clients expose these as
+`budget_audit_budget_pitfalls`, `writes_update_campaign_status`, and
+`writes_update_campaign_budget`.
 
 ### Configuring and Namespacing Tools
 
@@ -45,7 +57,34 @@ namespaces:
     prefix: "metadata"
     enabled_tools:
       - get_resource_metadata: true
+
+  # Option 4: Disable live-write-capable tools while keeping budget audits
+  budget: true
+  writes: false
 ```
+
+### Write Safety Model
+
+The Google Ads API OAuth scope is `https://www.googleapis.com/auth/adwords`;
+there is no separate read-only OAuth scope. This server limits write risk at
+the MCP tool layer:
+
+- Write tools default to `dry_run=true`, which sends Google Ads mutate requests
+  with `validate_only=true`.
+- Real writes require `dry_run=false` and `confirm_write=true`.
+- Campaign status writes are limited to `ENABLED` and `PAUSED`.
+- Budget writes require `max_daily_budget_amount_micros`.
+- Budget increases additionally require `confirm_budget_increase=true`, must
+  stay within `max_increase_percent`, and must not exceed
+  `max_daily_budget_amount_micros`.
+- If `monthly_spend_cap_amount_micros` is provided, budget writes are blocked
+  when the target daily budget could exceed roughly `30.4x` that monthly cap.
+- Explicitly shared budgets are blocked unless `allow_shared_budget=true`,
+  because a shared budget can affect multiple campaigns.
+
+For recurring optimization jobs, start with `audit_budget_pitfalls` and
+validate-only write calls. Only enable confirmed writes after reviewing the
+first reports and setting explicit account-level caps.
 
 
 ### Resources available

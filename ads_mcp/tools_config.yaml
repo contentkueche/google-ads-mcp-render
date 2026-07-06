@@ -7,3 +7,5 @@ namespaces:
   customers: true
   search: true
   metadata: true
+  budget: true
+  writes: true

@@ -102,4 +102,5 @@ def llm_tests(session):
 @nox.session(venv_backend="none")
 def update_smoke_golden(session):
     """Updates the smoke test golden file."""
+    session.run(sys.executable, "-m", "pip", "install", "google-genai")
     session.run(sys.executable, "-m", "tests.smoke.generate_golden")

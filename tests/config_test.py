@@ -28,6 +28,8 @@ class TestToolsConfig(unittest.TestCase):
         self.assertTrue(config.is_namespace_enabled("customers"))
         self.assertTrue(config.is_namespace_enabled("search"))
         self.assertTrue(config.is_namespace_enabled("metadata"))
+        self.assertTrue(config.is_namespace_enabled("budget"))
+        self.assertTrue(config.is_namespace_enabled("writes"))
         self.assertFalse(config.is_namespace_enabled("unknown_category"))
 
         self.assertEqual(config.get_namespace_prefix("customers"), "customers")
@@ -103,9 +105,7 @@ class TestToolsConfig(unittest.TestCase):
         self.assertFalse(config.is_tool_enabled("customers", "unlisted_tool"))
 
         self.assertTrue(config.is_tool_enabled("search", "search"))
-        self.assertFalse(
-            config.is_tool_enabled("search", "unlisted_search_tool")
-        )
+        self.assertFalse(config.is_tool_enabled("search", "unlisted_search_tool"))
 
     @patch("os.path.exists")
     def test_load_missing_file_raises_file_not_found(self, mock_exists):
@@ -135,9 +135,7 @@ class TestToolsConfig(unittest.TestCase):
         mock_file.assert_called_once_with("/env/path.yaml", "r")
         self.assertTrue(config.is_namespace_enabled("customers"))
 
-    @patch.dict(
-        "os.environ", {"GOOGLE_ADS_MCP_TOOLS_CONFIG": "/env/missing.yaml"}
-    )
+    @patch.dict("os.environ", {"GOOGLE_ADS_MCP_TOOLS_CONFIG": "/env/missing.yaml"})
     @patch("os.path.exists", return_value=False)
     def test_load_missing_env_var_path_raises(self, mock_exists):
         """Tests that a missing env-var-specified config raises FileNotFoundError."""
@@ -164,14 +162,12 @@ class TestToolsConfig(unittest.TestCase):
     @patch.dict("os.environ", {}, clear=True)
     @patch("os.path.exists", return_value=False)
     @patch("ads_mcp.config.importlib.resources.files")
-    def test_load_without_any_config_enables_defaults(
-        self, mock_files, mock_exists
-    ):
+    def test_load_without_any_config_enables_defaults(self, mock_files, mock_exists):
         """Tests that load falls back to all default namespaces if nothing resolves."""
-        mock_files.return_value.joinpath.return_value.is_file.return_value = (
-            False
-        )
+        mock_files.return_value.joinpath.return_value.is_file.return_value = False
         config = ToolsConfig.load()
         self.assertTrue(config.is_namespace_enabled("customers"))
         self.assertTrue(config.is_namespace_enabled("search"))
         self.assertTrue(config.is_namespace_enabled("metadata"))
+        self.assertTrue(config.is_namespace_enabled("budget"))
+        self.assertTrue(config.is_namespace_enabled("writes"))
