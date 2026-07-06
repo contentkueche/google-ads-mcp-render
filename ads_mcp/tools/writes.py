@@ -87,6 +87,26 @@ def _validate_customer_resource_name(
     return normalized
 
 
+def _validate_customer_composite_resource_name(
+    resource_name: str,
+    name: str,
+    customer_id: str,
+    collection: str,
+) -> str:
+    normalized = resource_name.strip()
+    prefix = f"customers/{customer_id}/{collection}/"
+    if not normalized.startswith(prefix):
+        raise ToolError(
+            f"{name} must be a {collection} resource name under "
+            f"customers/{customer_id}."
+        )
+    resource_id = normalized.removeprefix(prefix)
+    parts = resource_id.split("~")
+    if len(parts) != 2 or any(not part.isdigit() for part in parts):
+        raise ToolError(f"{name} has an invalid composite resource ID.")
+    return normalized
+
+
 def _validate_constant_resource_name(
     resource_name: str,
     name: str,
@@ -919,7 +939,7 @@ def update_ad_group_ad_status(
 ) -> Dict[str, Any]:
     """Update an ad group's ad status."""
     customer_id = _normalize_customer_id(customer_id)
-    ad_group_ad_resource_name = _validate_customer_resource_name(
+    ad_group_ad_resource_name = _validate_customer_composite_resource_name(
         ad_group_ad_resource_name,
         "ad_group_ad_resource_name",
         customer_id,
@@ -975,7 +995,7 @@ def update_ad_group_criteria_status(
             "ad_group_criterion_resource_names supports at most 200 items."
         )
     resource_names = [
-        _validate_customer_resource_name(
+        _validate_customer_composite_resource_name(
             resource_name,
             "ad_group_criterion_resource_name",
             customer_id,
