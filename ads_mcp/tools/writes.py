@@ -1186,6 +1186,54 @@ def update_ad_group_cpc_bid_micros(
 
 
 @writes_mcp.tool()
+def update_ad_group_name(
+    customer_id: str,
+    ad_group_resource_name: str,
+    name: str,
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Update a Search ad group's name."""
+    customer_id = _normalize_customer_id(customer_id)
+    ad_group_resource_name = _validate_customer_resource_name(
+        ad_group_resource_name,
+        "ad_group_resource_name",
+        customer_id,
+        "adGroups",
+    )
+    name = _validate_name(name, "name")
+    _require_confirmed_write(dry_run, confirm_write, "update an ad group name")
+
+    client = utils.get_googleads_client()
+    ad_group_service = utils.get_googleads_service("AdGroupService")
+    operation = client.get_type("AdGroupOperation")
+    ad_group = operation.update
+    ad_group.resource_name = ad_group_resource_name
+    ad_group.name = name
+    operation.update_mask.paths.append("name")
+
+    request = client.get_type("MutateAdGroupsRequest")
+    request.customer_id = customer_id
+    request.operations.append(operation)
+    request.validate_only = dry_run
+
+    try:
+        response = ad_group_service.mutate_ad_groups(request=request)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "update_ad_group_name",
+        "customer_id": customer_id,
+        "ad_group_resource_name": ad_group_resource_name,
+        "name": name,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
 def update_ad_group_ad_status(
     customer_id: str,
     ad_group_ad_resource_name: str,
