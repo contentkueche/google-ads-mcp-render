@@ -56,6 +56,7 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "writes_replace_campaign_geo_targeting_with_proximity", tool_names
         )
+        self.assertIn("writes_replace_campaign_ad_schedule", tool_names)
         self.assertIn("writes_update_ad_group_cpc_bid_micros", tool_names)
         self.assertIn("writes_update_ad_group_name", tool_names)
         self.assertIn("writes_update_campaign_budget", tool_names)
@@ -97,6 +98,7 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertNotIn(
             "writes_replace_campaign_geo_targeting_with_proximity", tool_names
         )
+        self.assertNotIn("writes_replace_campaign_ad_schedule", tool_names)
         self.assertNotIn("writes_update_ad_group_cpc_bid_micros", tool_names)
         self.assertNotIn("writes_update_ad_group_name", tool_names)
         self.assertNotIn("writes_update_campaign_budget", tool_names)
@@ -137,6 +139,7 @@ class TestToolsMounting(unittest.IsolatedAsyncioTestCase):
         self.assertIn(
             "mutate_replace_campaign_geo_targeting_with_proximity", tool_names
         )
+        self.assertIn("mutate_replace_campaign_ad_schedule", tool_names)
         self.assertIn("mutate_update_ad_group_cpc_bid_micros", tool_names)
         self.assertIn("mutate_update_ad_group_name", tool_names)
         self.assertIn("mutate_update_campaign_budget", tool_names)

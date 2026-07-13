@@ -96,6 +96,7 @@ def campaign_criterion_operation_with_create():
         create=SimpleNamespace(
             location=SimpleNamespace(),
             language=SimpleNamespace(),
+            ad_schedule=SimpleNamespace(),
         )
     )
 
@@ -138,6 +139,21 @@ def fake_enums():
             PHRASE="PHRASE_MATCH",
             EXACT="EXACT_MATCH",
         ),
+        DayOfWeekEnum=SimpleNamespace(
+            MONDAY="MONDAY",
+            TUESDAY="TUESDAY",
+            WEDNESDAY="WEDNESDAY",
+            THURSDAY="THURSDAY",
+            FRIDAY="FRIDAY",
+            SATURDAY="SATURDAY",
+            SUNDAY="SUNDAY",
+        ),
+        MinuteOfHourEnum=SimpleNamespace(
+            ZERO="ZERO",
+            FIFTEEN="FIFTEEN",
+            THIRTY="THIRTY",
+            FORTY_FIVE="FORTY_FIVE",
+        ),
         ResponseContentTypeEnum=SimpleNamespace(
             RESOURCE_NAME_ONLY="RESOURCE_NAME_ONLY"
         ),
@@ -172,6 +188,53 @@ def fake_create_client():
 
 
 class TestWrites(unittest.TestCase):
+    @patch("ads_mcp.tools.writes._google_ads_mutate")
+    @patch("ads_mcp.tools.writes.utils.get_googleads_service")
+    @patch("ads_mcp.tools.writes.utils.get_googleads_client")
+    def test_replace_campaign_ad_schedule_validate_only(
+        self, mock_get_client, mock_get_service, mock_mutate
+    ):
+        client = fake_create_client()
+        mock_get_client.return_value = client
+        service = MagicMock()
+        service.campaign_path.return_value = "customers/123/campaigns/456"
+        mock_get_service.return_value = service
+        mock_mutate.return_value = SimpleNamespace(
+            mutate_operation_responses=[]
+        )
+
+        result = writes.replace_campaign_ad_schedule(
+            customer_id="123",
+            campaign_id="456",
+            remove_campaign_criterion_resource_names=[],
+            days_of_week=["MONDAY", "TUESDAY"],
+            start_hour=7,
+            end_hour=23,
+        )
+
+        self.assertFalse(result["applied"])
+        self.assertTrue(result["validated_only"])
+        operations = mock_mutate.call_args.args[2]
+        self.assertEqual(len(operations), 2)
+        monday = operations[0].campaign_criterion_operation.create
+        self.assertEqual(monday.campaign, "customers/123/campaigns/456")
+        self.assertEqual(monday.ad_schedule.day_of_week, "MONDAY")
+        self.assertEqual(monday.ad_schedule.start_hour, 7)
+        self.assertEqual(monday.ad_schedule.end_hour, 23)
+
+    def test_replace_campaign_ad_schedule_requires_confirmation(self):
+        with self.assertRaisesRegex(ToolError, "confirm_write=true"):
+            writes.replace_campaign_ad_schedule(
+                customer_id="123",
+                campaign_id="456",
+                remove_campaign_criterion_resource_names=[],
+                days_of_week=["MONDAY"],
+                start_hour=7,
+                end_hour=23,
+                dry_run=False,
+                confirm_write=False,
+            )
+
     @patch("ads_mcp.tools.writes.utils.get_googleads_service")
     @patch("ads_mcp.tools.writes.utils.get_googleads_client")
     def test_update_campaign_status_validate_only(

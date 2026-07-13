@@ -37,6 +37,16 @@ PositiveGeoTargetType = Literal[
 ]
 NegativeGeoTargetType = Literal["PRESENCE", "PRESENCE_OR_INTEREST"]
 ProximityRadiusUnit = Literal["KILOMETERS", "MILES"]
+AdScheduleDay = Literal[
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+    "SUNDAY",
+]
+AdScheduleMinute = Literal["ZERO", "FIFTEEN", "THIRTY", "FORTY_FIVE"]
 EuPoliticalAdvertisingStatus = Literal[
     "CONTAINS_EU_POLITICAL_ADVERTISING",
     "DOES_NOT_CONTAIN_EU_POLITICAL_ADVERTISING",
@@ -1076,6 +1086,122 @@ def replace_campaign_geo_targeting_with_proximity(
         "radius_units": radius_units,
         "positive_geo_target_type": positive_geo_target_type,
         "negative_geo_target_type": negative_geo_target_type,
+        "resource_names": _result_resource_names(response),
+    }
+
+
+@writes_mcp.tool()
+def replace_campaign_ad_schedule(
+    customer_id: str,
+    campaign_id: str,
+    remove_campaign_criterion_resource_names: List[str],
+    days_of_week: List[AdScheduleDay],
+    start_hour: int,
+    end_hour: int,
+    start_minute: AdScheduleMinute = "ZERO",
+    end_minute: AdScheduleMinute = "ZERO",
+    dry_run: bool = True,
+    confirm_write: bool = False,
+) -> Dict[str, Any]:
+    """Replace a campaign's ad schedule with one interval per selected day.
+
+    The interval must start and end on the same day. Defaults to validate-only
+    mode. A real write requires dry_run=false and confirm_write=true.
+    """
+    customer_id = _normalize_customer_id(customer_id)
+    campaign_id = _normalize_id(campaign_id, "campaign_id")
+    if not days_of_week:
+        raise ToolError("days_of_week must contain at least one day.")
+    if len(set(days_of_week)) != len(days_of_week):
+        raise ToolError("days_of_week must not contain duplicates.")
+    if not 0 <= start_hour <= 23:
+        raise ToolError("start_hour must be between 0 and 23.")
+    if not 0 <= end_hour <= 24:
+        raise ToolError("end_hour must be between 0 and 24.")
+
+    minute_values = {"ZERO": 0, "FIFTEEN": 15, "THIRTY": 30, "FORTY_FIVE": 45}
+    start_total_minutes = start_hour * 60 + minute_values[start_minute]
+    end_total_minutes = end_hour * 60 + minute_values[end_minute]
+    if end_hour == 24 and end_minute != "ZERO":
+        raise ToolError("end_minute must be ZERO when end_hour is 24.")
+    if start_total_minutes >= end_total_minutes:
+        raise ToolError("The ad schedule interval must end after it starts.")
+
+    remove_campaign_criterion_resource_names = [
+        _validate_customer_composite_resource_name(
+            resource_name,
+            "campaign_criterion_resource_name",
+            customer_id,
+            "campaignCriteria",
+        )
+        for resource_name in remove_campaign_criterion_resource_names
+    ]
+    _require_confirmed_write(
+        dry_run,
+        confirm_write,
+        "replace a campaign ad schedule",
+    )
+
+    client = utils.get_googleads_client()
+    campaign_service = utils.get_googleads_service("CampaignService")
+    campaign_resource_name = campaign_service.campaign_path(
+        customer_id, campaign_id
+    )
+    operations = []
+
+    for resource_name in remove_campaign_criterion_resource_names:
+        remove_operation = client.get_type("CampaignCriterionOperation")
+        remove_operation.remove = resource_name
+        operations.append(
+            _wrap_mutate_operation(
+                client,
+                "campaign_criterion_operation",
+                remove_operation,
+            )
+        )
+
+    for day_of_week in days_of_week:
+        create_operation = client.get_type("CampaignCriterionOperation")
+        criterion = create_operation.create
+        criterion.campaign = campaign_resource_name
+        criterion.ad_schedule.day_of_week = getattr(
+            client.enums.DayOfWeekEnum, day_of_week
+        )
+        criterion.ad_schedule.start_hour = start_hour
+        criterion.ad_schedule.start_minute = getattr(
+            client.enums.MinuteOfHourEnum, start_minute
+        )
+        criterion.ad_schedule.end_hour = end_hour
+        criterion.ad_schedule.end_minute = getattr(
+            client.enums.MinuteOfHourEnum, end_minute
+        )
+        operations.append(
+            _wrap_mutate_operation(
+                client,
+                "campaign_criterion_operation",
+                create_operation,
+            )
+        )
+
+    try:
+        response = _google_ads_mutate(client, customer_id, operations, dry_run)
+    except GoogleAdsException as ex:
+        raise _google_ads_tool_error(ex)
+
+    return {
+        "applied": not dry_run,
+        "validated_only": dry_run,
+        "operation": "replace_campaign_ad_schedule",
+        "customer_id": customer_id,
+        "campaign_id": campaign_id,
+        "removed_campaign_criteria_count": len(
+            remove_campaign_criterion_resource_names
+        ),
+        "days_of_week": days_of_week,
+        "start_hour": start_hour,
+        "start_minute": start_minute,
+        "end_hour": end_hour,
+        "end_minute": end_minute,
         "resource_names": _result_resource_names(response),
     }
 

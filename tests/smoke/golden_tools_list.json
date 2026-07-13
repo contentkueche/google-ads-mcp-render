@@ -956,6 +956,183 @@
           "tags": []
         }
       },
+      "description": "Replace a campaign's ad schedule with one interval per selected day.\n\nThe interval must start and end on the same day. Defaults to validate-only\nmode. A real write requires dry_run=false and confirm_write=true.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "days_of_week": {
+            "items": {
+              "enum": [
+                "MONDAY",
+                "TUESDAY",
+                "WEDNESDAY",
+                "THURSDAY",
+                "FRIDAY",
+                "SATURDAY",
+                "SUNDAY"
+              ],
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "end_hour": {
+            "type": "integer"
+          },
+          "end_minute": {
+            "default": "ZERO",
+            "enum": [
+              "ZERO",
+              "FIFTEEN",
+              "THIRTY",
+              "FORTY_FIVE"
+            ],
+            "type": "string"
+          },
+          "remove_campaign_criterion_resource_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "start_hour": {
+            "type": "integer"
+          },
+          "start_minute": {
+            "default": "ZERO",
+            "enum": [
+              "ZERO",
+              "FIFTEEN",
+              "THIRTY",
+              "FORTY_FIVE"
+            ],
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "remove_campaign_criterion_resource_names",
+          "days_of_week",
+          "start_hour",
+          "end_hour"
+        ],
+        "type": "object"
+      },
+      "name": "writes_replace_campaign_ad_schedule",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Replace campaign location targeting with a geo-radius proximity target.\n\nAlso updates the campaign's positive/negative geo target type settings.\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "campaign_id": {
+            "type": "string"
+          },
+          "city_name": {
+            "default": "Munich",
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "country_code": {
+            "default": "DE",
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "latitude": {
+            "type": "number"
+          },
+          "longitude": {
+            "type": "number"
+          },
+          "negative_geo_target_type": {
+            "default": "PRESENCE",
+            "enum": [
+              "PRESENCE",
+              "PRESENCE_OR_INTEREST"
+            ],
+            "type": "string"
+          },
+          "positive_geo_target_type": {
+            "default": "PRESENCE",
+            "enum": [
+              "PRESENCE",
+              "PRESENCE_OR_INTEREST",
+              "SEARCH_INTEREST"
+            ],
+            "type": "string"
+          },
+          "radius": {
+            "type": "number"
+          },
+          "radius_units": {
+            "default": "KILOMETERS",
+            "enum": [
+              "KILOMETERS",
+              "MILES"
+            ],
+            "type": "string"
+          },
+          "remove_campaign_criterion_resource_names": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "customer_id",
+          "campaign_id",
+          "remove_campaign_criterion_resource_names",
+          "latitude",
+          "longitude",
+          "radius"
+        ],
+        "type": "object"
+      },
+      "name": "writes_replace_campaign_geo_targeting_with_proximity",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
       "description": "Update an ad group's ad status.",
       "inputSchema": {
         "additionalProperties": false,
@@ -990,6 +1167,51 @@
         "type": "object"
       },
       "name": "writes_update_ad_group_ad_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update a Search ad group's default CPC bid.\n\nDefaults to validate-only mode. A real write requires dry_run=false and\nconfirm_write=true.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "cpc_bid_micros": {
+            "type": "integer"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "max_cpc_bid_micros": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_resource_name",
+          "cpc_bid_micros",
+          "max_cpc_bid_micros"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_ad_group_cpc_bid_micros",
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
@@ -1038,6 +1260,47 @@
         "type": "object"
       },
       "name": "writes_update_ad_group_criteria_status",
+      "outputSchema": {
+        "additionalProperties": true,
+        "type": "object"
+      }
+    },
+    {
+      "_meta": {
+        "fastmcp": {
+          "tags": []
+        }
+      },
+      "description": "Update a Search ad group's name.",
+      "inputSchema": {
+        "additionalProperties": false,
+        "properties": {
+          "ad_group_resource_name": {
+            "type": "string"
+          },
+          "confirm_write": {
+            "default": false,
+            "type": "boolean"
+          },
+          "customer_id": {
+            "type": "string"
+          },
+          "dry_run": {
+            "default": true,
+            "type": "boolean"
+          },
+          "name": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "customer_id",
+          "ad_group_resource_name",
+          "name"
+        ],
+        "type": "object"
+      },
+      "name": "writes_update_ad_group_name",
       "outputSchema": {
         "additionalProperties": true,
         "type": "object"
